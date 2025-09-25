@@ -1,6 +1,6 @@
 # messaging_app/chats/views.py
 
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
@@ -15,6 +15,11 @@ from .serializers import ConversationSerializer, MessageSerializer
 class ConversationViewSet(viewsets.ModelViewSet):
     queryset = Conversation.objects.all()
     serializer_class = ConversationSerializer
+
+    # Ajout de filtres (permet recherche par ID de conversation)
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["conversation_id"]
+    ordering_fields = ["created_at"]
 
     def create(self, request, *args, **kwargs):
         """
@@ -47,6 +52,11 @@ class MessageViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
 
+    # Ajout de filtres (recherche par contenu du message ou par sender)
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["message_body", "sender__email"]
+    ordering_fields = ["sent_at"]
+
     def create(self, request, *args, **kwargs):
         """
         Envoyer un message dans une conversation existante.
@@ -70,8 +80,4 @@ class MessageViewSet(viewsets.ModelViewSet):
         message = Message.objects.create(
             conversation=conversation,
             sender=sender,
-            message_body=message_body
-        )
-
-        serializer = self.get_serializer(message)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+            message_body=_
