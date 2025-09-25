@@ -5,5 +5,7 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('messaging_app.chats.urls')),  # inclusion des routes API
+    path('api/', include('messaging_app.chats.urls')),   # inclusion des routes API
+    path('api-auth/', include('rest_framework.urls')),   # ajout de l'auth DRF (login/logout)
 ]
+
