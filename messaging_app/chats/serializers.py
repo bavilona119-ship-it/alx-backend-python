@@ -8,6 +8,9 @@ from .models import User, Conversation, Message
 # User Serializer
 # -------------------------
 class UserSerializer(serializers.ModelSerializer):
+    # Exemple d'utilisation de serializers.CharField explicitement
+    full_name = serializers.CharField(source="get_full_name", read_only=True)
+
     class Meta:
         model = User
         fields = [
@@ -18,6 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
             "phone_number",
             "role",
             "created_at",
+            "full_name",
         ]
 
 
@@ -26,6 +30,8 @@ class UserSerializer(serializers.ModelSerializer):
 # -------------------------
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
+    # Exemple d'utilisation de SerializerMethodField
+    preview = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
@@ -33,8 +39,13 @@ class MessageSerializer(serializers.ModelSerializer):
             "message_id",
             "sender",
             "message_body",
+            "preview",
             "sent_at",
         ]
+
+    def get_preview(self, obj):
+        """Retourne un extrait du message (50 caractères max)."""
+        return obj.message_body[:50] + ("..." if len(obj.message_body) > 50 else "")
 
 
 # -------------------------
@@ -52,3 +63,12 @@ class ConversationSerializer(serializers.ModelSerializer):
             "messages",
             "created_at",
         ]
+
+    def validate(self, data):
+        """
+        Exemple d'utilisation de ValidationError :
+        On empêche la création d'une conversation sans participants.
+        """
+        if not self.instance and not data.get("participants"):
+            raise serializers.ValidationError("Une conversation doit avoir au moins un participant.")
+        return data
