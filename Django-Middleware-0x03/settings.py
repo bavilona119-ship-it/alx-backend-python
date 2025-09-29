@@ -9,4 +9,5 @@ MIDDLEWARE = [
 
     # ✅ Add your custom middleware
     'chats.middleware.RequestLoggingMiddleware',
+    'chats.middleware.RestrictAccessByTimeMiddleware',
 ]
