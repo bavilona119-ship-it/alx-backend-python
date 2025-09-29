@@ -1,3 +1,4 @@
+```python
 from pathlib import Path
 
 # -------------------------
@@ -23,6 +24,7 @@ INSTALLED_APPS = [
     # Third-party apps
     "rest_framework",             # Django REST Framework
     "rest_framework_simplejwt",   # ✅ JWT support
+    "django_filters",             # ✅ Filtres pour DRF
 
     # Local apps
     'chats',
@@ -124,4 +126,10 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
     ],
+    # ✅ Pagination globale : 20 messages par page
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+    # ✅ Filtres globaux
+    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
 }
+```
