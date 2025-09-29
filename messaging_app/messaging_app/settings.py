@@ -19,8 +19,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    "rest_framework",   # Django REST Framework
-    'chats',            # ton app
+
+    # Third-party apps
+    "rest_framework",             # Django REST Framework
+    "rest_framework_simplejwt",   # ✅ JWT support
+
+    # Local apps
+    'chats',
 ]
 
 # -------------------------
@@ -108,13 +113,14 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # -------------------------
-# Django REST Framework setup
+# Django REST Framework + JWT setup
 # -------------------------
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",  # ✅ JWT par défaut
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
     ],
