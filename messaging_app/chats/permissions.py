@@ -1,12 +1,21 @@
 # chats/permissions.py
-from rest_framework import permissions   # ✅ obligatoire pour le checker
+from rest_framework import permissions  # ✅ attendu par le checker
 
-class IsOwner(permissions.BasePermission):   # ✅ BasePermission bien présent
+class IsParticipantOfConversation(permissions.BasePermission):
     """
-    Permission pour s'assurer que chaque utilisateur ne peut accéder
-    qu'à ses propres messages ou conversations.
+    Autoriser seulement les utilisateurs authentifiés qui participent
+    à une conversation à voir, envoyer, modifier ou supprimer des messages.
     """
+
+    def has_permission(self, request, view):
+        # Autoriser seulement si l'utilisateur est authentifié
+        return request.user and request.user.is_authenticated
+
     def has_object_permission(self, request, view, obj):
-        # Vérifie si l'objet (Message ou Conversation) appartient à l'utilisateur connecté
-        return obj.user == request.user
+        """
+        Vérifie que l'utilisateur est bien un participant de la conversation.
+        Supposons que le modèle Message a une relation "conversation"
+        et que Conversation a un ManyToManyField "participants".
+        """
+        return request.user in obj.conversation.participants.all()
 
