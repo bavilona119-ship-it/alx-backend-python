@@ -1,50 +1,22 @@
-from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.cache import cache_page
-from django.db.models import Prefetch
+from django.shortcuts import redirect
+from django.contrib import messages
+
 from django.contrib.auth.models import User
-from .models import Message
 
 
 @login_required
-def unread_inbox(request):
+def delete_user(request):
     """
-    ✅ Vue affichant uniquement les messages non lus de l'utilisateur connecté.
-    Utilise le custom manager et .only() pour optimiser la requête.
+    ✅ Vue pour permettre à l'utilisateur de supprimer son propre compte.
+    Lors de la suppression, un signal post_delete nettoiera toutes les données liées.
     """
     user = request.user
-    unread_messages = Message.unread_messages.unread_for_user(user)
-    return render(request, 'messaging/unread_inbox.html', {'messages': unread_messages})
 
+    if request.method == "POST":
+        username = user.username
+        user.delete()  # ✅ Supprime l'utilisateur
+        messages.success(request, f"Le compte '{username}' a été supprimé avec succès.")
+        return redirect('home')  # Redirige vers une page d'accueil ou login
 
-@login_required
-@cache_page(60)  # ✅ Cache la vue pendant 60 secondes
-def conversation_view(request, username):
-    """
-    ✅ Vue qui affiche la conversation entre l'utilisateur connecté et un autre.
-    - Utilise select_related et prefetch_related pour optimisation ORM
-    - Filtre les messages envoyés par request.user
-    """
-
-    other_user = get_object_or_404(User, username=username)
-    user = request.user
-
-    # ✅ Optimisation des requêtes
-    messages = (
-        Message.objects.filter(
-            sender__in=[user, other_user],
-            receiver__in=[user, other_user],
-            sender=request.user  # ✅ filtrage par l'utilisateur actuel
-        )
-        .select_related('sender', 'receiver', 'parent_message')
-        .prefetch_related(
-            Prefetch('replies', queryset=Message.objects.select_related('sender', 'receiver'))
-        )
-        .only('id', 'sender__username', 'receiver__username', 'content', 'timestamp')
-        .order_by('timestamp')
-    )
-
-    return render(request, 'messaging/conversation.html', {
-        'messages': messages,
-        'other_user': other_user,
-    })
+    return redirect('profile')  # Par exemple, si méthode != POST
