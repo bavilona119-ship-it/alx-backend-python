@@ -1,26 +1,50 @@
-from django.db import models
+from django.test import TestCase
 from django.contrib.auth.models import User
+from .models import Message, MessageHistory
 
 
-class Message(models.Model):
-    sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
-    receiver = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
-    content = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
-    edited = models.BooleanField(default=False)  # ✅ champ ajouté pour suivre les modifications
+class MessageEditSignalTest(TestCase):
+    def setUp(self):
+        self.sender = User.objects.create_user(username='alice', password='test123')
+        self.receiver = User.objects.create_user(username='bob', password='test123')
 
-    def __str__(self):
-        return f"Message from {self.sender.username} to {self.receiver.username}"
+    def test_message_edit_creates_history(self):
+        # Création initiale d’un message
+        message = Message.objects.create(
+            sender=self.sender,
+            receiver=self.receiver,
+            content="Hello Bob!"
+        )
+        self.assertFalse(message.edited)
 
+        # Modification du message
+        message.content = "Hi Bob! How are you?"
+        message.save()
 
-class MessageHistory(models.Model):
-    """
-    Stocke les anciennes versions d’un message avant modification.
-    """
-    message = models.ForeignKey(Message, related_name='history', on_delete=models.CASCADE)
-    old_content = models.TextField()
-    edited_at = models.DateTimeField(auto_now_add=True)
-    edited_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+        # Vérifie que le message est marqué comme édité
+        message.refresh_from_db()
+        self.assertTrue(message.edited)
 
-    def __str__(self):
-        return f"History of Message {self.message.id} at {self.edited_at}"
+        # Vérifie qu’un historique a été créé
+        history = MessageHistory.objects.filter(message=message).first()
+        self.assertIsNotNone(history)
+        self.assertEqual(history.old_content, "Hello Bob!")
+        self.assertEqual(history.edited_by, self.sender)
+
+        # Vérifie que le timestamp d'édition existe
+        self.assertIsNotNone(history.edited_at)
+
+    def test_no_history_created_if_content_not_changed(self):
+        # Crée un message
+        message = Message.objects.create(
+            sender=self.sender,
+            receiver=self.receiver,
+            content="No edit yet"
+        )
+
+        # Sauvegarde sans changer le contenu
+        message.save()
+
+        # Vérifie qu’aucune historique n’a été créée
+        history_count = MessageHistory.objects.filter(message=message).count()
+        self.assertEqual(history_count, 0)
