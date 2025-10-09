@@ -3,9 +3,27 @@ from django.contrib.auth.models import User
 from django.db.models import Prefetch
 
 
+# ✅ Custom Manager pour les messages non lus
+class UnreadMessagesManager(models.Manager):
+    def for_user(self, user):
+        """
+        Retourne les messages non lus pour un utilisateur donné.
+        Optimisé avec .only() pour charger uniquement les champs nécessaires.
+        """
+        return (
+            self.filter(receiver=user, read=False)
+            .select_related('sender')
+            .only('id', 'sender__username', 'content', 'timestamp')
+            .order_by('-timestamp')
+        )
+
+
 class Message(models.Model):
     """
-    ✅ Modèle principal pour les messages, avec support de conversation en fil (threaded).
+    ✅ Modèle principal pour les messages, avec :
+    - Historique d'édition
+    - Conversations à fils (threaded)
+    - Gestion des messages non lus
     """
     sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
@@ -13,7 +31,10 @@ class Message(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     edited = models.BooleanField(default=False)
 
-    # ✅ Nouveau champ pour les réponses (self-referential ForeignKey)
+    # ✅ Nouveau champ pour les messages non lus
+    read = models.BooleanField(default=False)
+
+    # ✅ Threaded conversation (réponses)
     parent_message = models.ForeignKey(
         'self',
         null=True,
@@ -21,6 +42,10 @@ class Message(models.Model):
         related_name='replies',
         on_delete=models.CASCADE
     )
+
+    # ✅ Custom manager pour messages non lus
+    objects = models.Manager()  # Manager par défaut
+    unread = UnreadMessagesManager()  # Manager personnalisé
 
     def __str__(self):
         return f"Message from {self.sender.username} to {self.receiver.username}"
@@ -31,7 +56,6 @@ class Message(models.Model):
         """
         return self.history.all().order_by('-edited_at')
 
-    # ✅ ORM avancé : récupération optimisée avec select_related & prefetch_related
     @classmethod
     def get_conversation(cls, user):
         """
@@ -46,7 +70,6 @@ class Message(models.Model):
             .order_by('-timestamp')
         )
 
-    # ✅ Requête récursive ORM pour récupérer tous les fils d’un message
     def get_all_replies(self):
         """
         Récupère récursivement toutes les réponses à ce message (threaded format).
