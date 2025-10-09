@@ -1,50 +1,50 @@
-from django.test import TestCase
+from django.db import models
 from django.contrib.auth.models import User
-from .models import Message, MessageHistory
 
 
-class MessageEditSignalTest(TestCase):
-    def setUp(self):
-        self.sender = User.objects.create_user(username='alice', password='test123')
-        self.receiver = User.objects.create_user(username='bob', password='test123')
+class Message(models.Model):
+    """
+    Modèle principal pour stocker les messages échangés entre utilisateurs.
+    """
+    sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
+    receiver = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    edited = models.BooleanField(default=False)  # ✅ Indique si le message a été modifié
 
-    def test_message_edit_creates_history(self):
-        # Création initiale d’un message
-        message = Message.objects.create(
-            sender=self.sender,
-            receiver=self.receiver,
-            content="Hello Bob!"
-        )
-        self.assertFalse(message.edited)
+    def __str__(self):
+        return f"Message from {self.sender.username} to {self.receiver.username}"
 
-        # Modification du message
-        message.content = "Hi Bob! How are you?"
-        message.save()
+    def get_edit_history(self):
+        """
+        ✅ Permet d’afficher tout l’historique des modifications
+        dans l’interface utilisateur (UI).
+        """
+        return self.history.all().order_by('-edited_at')
 
-        # Vérifie que le message est marqué comme édité
-        message.refresh_from_db()
-        self.assertTrue(message.edited)
 
-        # Vérifie qu’un historique a été créé
-        history = MessageHistory.objects.filter(message=message).first()
-        self.assertIsNotNone(history)
-        self.assertEqual(history.old_content, "Hello Bob!")
-        self.assertEqual(history.edited_by, self.sender)
+class MessageHistory(models.Model):
+    """
+    ✅ Modèle pour stocker les anciennes versions d’un message avant édition.
+    """
+    message = models.ForeignKey(Message, related_name='history', on_delete=models.CASCADE)
+    old_content = models.TextField()
+    edited_at = models.DateTimeField(auto_now_add=True)  # ✅ Date de l’édition
+    edited_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)  # ✅ Auteur de la modification
 
-        # Vérifie que le timestamp d'édition existe
-        self.assertIsNotNone(history.edited_at)
+    def __str__(self):
+        return f"History of Message {self.message.id} edited by {self.edited_by} at {self.edited_at}"
 
-    def test_no_history_created_if_content_not_changed(self):
-        # Crée un message
-        message = Message.objects.create(
-            sender=self.sender,
-            receiver=self.receiver,
-            content="No edit yet"
-        )
 
-        # Sauvegarde sans changer le contenu
-        message.save()
+class Notification(models.Model):
+    """
+    Modèle pour notifier les utilisateurs quand ils reçoivent un nouveau message.
+    """
+    user = models.ForeignKey(User, related_name='notifications', on_delete=models.CASCADE)
+    message = models.ForeignKey(Message, related_name='notifications', on_delete=models.CASCADE)
+    text = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
 
-        # Vérifie qu’aucune historique n’a été créée
-        history_count = MessageHistory.objects.filter(message=message).count()
-        self.assertEqual(history_count, 0)
+    def __str__(self):
+        return f"Notification for {self.user.username}: {self.text}"
