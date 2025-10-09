@@ -5,11 +5,10 @@ from .managers import UnreadMessagesManager
 
 class Message(models.Model):
     """
-    ✅ Modèle principal pour la messagerie
-    - Support des threads (parent_message)
-    - Suivi d’édition (edited)
-    - Indicateur de lecture (unread)
-    - Manager personnalisé pour messages non lus
+    ✅ Modèle Message mis à jour :
+    - parent_message : pour les réponses en thread
+    - unread : pour messages non lus
+    - managers personnalisés
     """
 
     sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
@@ -17,23 +16,24 @@ class Message(models.Model):
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     edited = models.BooleanField(default=False)
-
-    # ✅ champ pour indiquer si le message est non lu
     unread = models.BooleanField(default=True)
 
-    # ✅ relation pour threaded messages
+    # ✅ Ajout du champ parent_message (self-referential)
     parent_message = models.ForeignKey(
-        'self', null=True, blank=True, related_name='replies', on_delete=models.CASCADE
+        'self',
+        null=True,
+        blank=True,
+        related_name='replies',
+        on_delete=models.CASCADE
     )
 
-    # ✅ managers
+    # ✅ Managers
     objects = models.Manager()
-    unread_messages = UnreadMessagesManager()  # Custom manager
+    unread_messages = UnreadMessagesManager()
 
     def __str__(self):
         return f"Message from {self.sender.username} to {self.receiver.username}"
 
     def mark_as_read(self):
-        """Marque le message comme lu"""
         self.unread = False
         self.save(update_fields=['unread'])
