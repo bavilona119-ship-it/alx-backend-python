@@ -1,44 +1,84 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models import Prefetch
 
 
 class Message(models.Model):
     """
-    Modèle principal pour stocker les messages échangés entre utilisateurs.
+    ✅ Modèle principal pour les messages, avec support de conversation en fil (threaded).
     """
     sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    edited = models.BooleanField(default=False)  # ✅ Indique si le message a été modifié
+    edited = models.BooleanField(default=False)
+
+    # ✅ Nouveau champ pour les réponses (self-referential ForeignKey)
+    parent_message = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        related_name='replies',
+        on_delete=models.CASCADE
+    )
 
     def __str__(self):
         return f"Message from {self.sender.username} to {self.receiver.username}"
 
     def get_edit_history(self):
         """
-        ✅ Permet d’afficher tout l’historique des modifications
-        dans l’interface utilisateur (UI).
+        Retourne l'historique des éditions de ce message.
         """
         return self.history.all().order_by('-edited_at')
+
+    # ✅ ORM avancé : récupération optimisée avec select_related & prefetch_related
+    @classmethod
+    def get_conversation(cls, user):
+        """
+        Récupère toutes les conversations d'un utilisateur avec optimisations ORM.
+        """
+        return (
+            cls.objects.filter(receiver=user)
+            .select_related('sender', 'receiver', 'parent_message')
+            .prefetch_related(
+                Prefetch('replies', queryset=cls.objects.select_related('sender', 'receiver'))
+            )
+            .order_by('-timestamp')
+        )
+
+    # ✅ Requête récursive ORM pour récupérer tous les fils d’un message
+    def get_all_replies(self):
+        """
+        Récupère récursivement toutes les réponses à ce message (threaded format).
+        """
+        replies = []
+
+        def _fetch_children(message):
+            children = message.replies.all().select_related('sender', 'receiver')
+            for child in children:
+                replies.append(child)
+                _fetch_children(child)
+
+        _fetch_children(self)
+        return replies
 
 
 class MessageHistory(models.Model):
     """
-    ✅ Modèle pour stocker les anciennes versions d’un message avant édition.
+    ✅ Historique des versions de messages avant édition.
     """
     message = models.ForeignKey(Message, related_name='history', on_delete=models.CASCADE)
     old_content = models.TextField()
-    edited_at = models.DateTimeField(auto_now_add=True)  # ✅ Date de l’édition
-    edited_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)  # ✅ Auteur de la modification
+    edited_at = models.DateTimeField(auto_now_add=True)
+    edited_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
-        return f"History of Message {self.message.id} edited by {self.edited_by} at {self.edited_at}"
+        return f"History of Message {self.message.id} edited by {self.edited_by}"
 
 
 class Notification(models.Model):
     """
-    Modèle pour notifier les utilisateurs quand ils reçoivent un nouveau message.
+    ✅ Notifications liées aux messages.
     """
     user = models.ForeignKey(User, related_name='notifications', on_delete=models.CASCADE)
     message = models.ForeignKey(Message, related_name='notifications', on_delete=models.CASCADE)
