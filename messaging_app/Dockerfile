@@ -1,23 +1,18 @@
-# Étape 1 : Image de base Python
-FROM python:3.10-slim
+# Utiliser l’image de base Python
+FROM python:3.10
 
-# Étape 2 : Répertoire de travail dans le conteneur
+# Définir le répertoire de travail
 WORKDIR /app
 
-# Étape 3 : Variables d’environnement
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+# Copier les fichiers du projet dans le conteneur
+COPY . /app
 
-# Étape 4 : Copier et installer les dépendances
-COPY requirements.txt /app/
+# Installer les dépendances
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# Étape 5 : Copier tout le code du projet dans le conteneur
-COPY . /app/
-
-# Étape 6 : Exposer le port par défaut de Django
+# Exposer le port par défaut de Django
 EXPOSE 8000
 
-# Étape 7 : Lancer le serveur
+# Lancer le serveur Django
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
