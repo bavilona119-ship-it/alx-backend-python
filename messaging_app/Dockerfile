@@ -1,18 +1,19 @@
-# Utiliser l’image de base Python
+# Use a base Python image
 FROM python:3.10
 
-# Définir le répertoire de travail
+# Set working directory
 WORKDIR /app
 
-# Copier les fichiers du projet dans le conteneur
+# Copy all files into the container
 COPY . /app
 
-# Installer les dépendances
+# Install dependencies
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# Exposer le port par défaut de Django
+# Expose the port your Django app runs on
 EXPOSE 8000
 
-# Lancer le serveur Django
+# Run the application
+# Note: The "-p" flag is used when running the container to map ports (e.g., docker run -p 8000:8000)
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
