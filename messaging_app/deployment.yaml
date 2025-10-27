@@ -1,1 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-messaging-app
+  labels:
+    app: django-messaging-app
+spec:
+  replicas: 2  # You can adjust this to control scaling
+  selector:
+    matchLabels:
+      app: django-messaging-app
+  template:
+    metadata:
+      labels:
+        app: django-messaging-app
+    spec:
+      containers:
+        - name: django-messaging-app
+          image: your-dockerhub-username/django-messaging-app:latest  # Replace with your image name
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DJANGO_SETTINGS_MODULE
+              value: "messaging_app.settings"
+            - name: DEBUG
+              value: "True"
+            - name: DATABASE_URL
+              value: "sqlite:///db.sqlite3"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          imagePullPolicy: IfNotPresent
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-messaging-service
+  labels:
+    app: django-messaging-app
+spec:
+  selector:
+    app: django-messaging-app
+  ports:
+    - protocol: TCP
+      port: 8000       # The port other services in the cluster will use
+      targetPort: 8000 # The port Django runs on inside the container
+  type: ClusterIP  # Keeps it internal (not exposed externally)
 
