@@ -1,1 +1,43 @@
+#!/bin/bash
+# kubctl-0x01 - Scale the Django app deployment and test performance
+
+set -e  # Exit immediately if a command fails
+
+DEPLOYMENT_NAME="django-messaging-app"
+
+echo "🚀 Scaling Kubernetes deployment for Django Messaging App..."
+
+# Step 1: Scale the deployment to 3 replicas
+echo "⚙️  Scaling deployment to 3 replicas..."
+kubectl scale deployment/${DEPLOYMENT_NAME} --replicas=3
+
+# Step 2: Wait for pods to be ready
+echo "⏳ Waiting for pods to be ready..."
+kubectl rollout status deployment/${DEPLOYMENT_NAME}
+
+# Step 3: Verify that multiple pods are running
+echo "📦 Checking running pods..."
+kubectl get pods -l app=${DEPLOYMENT_NAME}
+
+# Step 4: Perform load testing using wrk (simple HTTP benchmarking)
+echo "🔥 Running load test with wrk..."
+# Ensure wrk is installed or provide instructions
+if ! command -v wrk &> /dev/null
+then
+    echo "❌ wrk not found! Please install it to perform load testing."
+    echo "You can install wrk using:"
+    echo "  sudo apt install wrk -y"
+else
+    # Get service URL (works with Minikube)
+    SERVICE_URL=$(minikube service django-messaging-service --url)
+    echo "📍 Testing service at: $SERVICE_URL"
+    wrk -t4 -c50 -d30s $SERVICE_URL
+fi
+
+# Step 5: Monitor resource usage
+echo "📊 Monitoring resource usage..."
+echo "Tip: Press CTRL+C to stop watching."
+kubectl top pods || echo "⚠️ Metrics server not installed. Run: minikube addons enable metrics-server"
+
+echo "✅ Scaling and performance test completed successfully!"
 
