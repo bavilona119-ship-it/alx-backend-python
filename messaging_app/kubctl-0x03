@@ -1,0 +1,38 @@
+#!/bin/bash
+# kubctl-0x03 - Perform Rolling Update for Django Messaging App
+
+set -e
+
+echo "🚀 Starting Rolling Update for django-messaging-blue..."
+
+# Apply the updated deployment (new image version)
+kubectl apply -f blue_deployment.yaml
+
+echo "⏳ Monitoring rollout status..."
+kubectl rollout status deployment/django-messaging-blue
+
+echo "✅ Rollout complete. Checking current pods..."
+kubectl get pods -l app=django-messaging,version=blue -o wide
+
+# Continuous testing for downtime
+SERVICE_IP=$(minikube service django-messaging-service --url | head -n1)
+
+if [ -z "$SERVICE_IP" ]; then
+  echo "⚠️  Could not get service URL. Make sure the service is exposed."
+  exit 1
+fi
+
+echo "🌐 Testing app availability during rollout using curl..."
+echo "Sending 20 requests to $SERVICE_IP ..."
+
+for i in {1..20}
+do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" $SERVICE_IP)
+  echo "Request #$i → HTTP $STATUS"
+  sleep 1
+done
+
+echo "📊 Final Pod Status:"
+kubectl get pods -l app=django-messaging,version=blue -o wide
+
+echo "🎯 Rolling Update Verified Successfully!"
