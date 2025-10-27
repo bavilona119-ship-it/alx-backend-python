@@ -1,1 +1,18 @@
+# Enable ingress addon for Minikube
+minikube addons enable ingress
+
+# Apply the ingress resource
+kubectl apply -f ingress.yaml
+
+# Verify ingress setup
+kubectl get ingress
+
+# Check services to ensure the app is reachable
+kubectl get svc
+
+# Add host mapping (optional, for local testing)
+echo "$(minikube ip) messaging.local" | sudo tee -a /etc/hosts
+
+# Test access in browser or curl
+curl http://messaging.local/api/
 
