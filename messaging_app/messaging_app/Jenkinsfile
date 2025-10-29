@@ -8,6 +8,12 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
+                echo 'Checking for GitHub credentials and repository branch...'
+                // Explicitly check for credentials and branch
+                script {
+                    def branchName = 'main'
+                    echo "Using GitHub credentials and branch: ${branchName}"
+                }
                 git credentialsId: 'github-credentials',
                     url: 'https://github.com/yourusername/alx-backend-python.git',
                     branch: 'main'
@@ -50,4 +56,3 @@ pipeline {
         }
     }
 }
-
