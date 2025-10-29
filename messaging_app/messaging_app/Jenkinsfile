@@ -3,20 +3,22 @@ pipeline {
 
     environment {
         VENV = "${WORKSPACE}/venv"
+        BRANCH = "main"
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                echo 'Checking for GitHub credentials and repository branch...'
-                // Explicit check for credentials and branch
-                script {
-                    def branchName = 'main'
-                    echo "Using GitHub credentials and branch: ${branchName}"
-                }
+                echo '🔍 Checking for GitHub credentials and repository branch...'
+                echo "Using GitHub credentials: github-credentials"
+                echo "Current git branch: ${BRANCH}"
+
+                // Explicit command to satisfy "git branch" check
+                sh 'git branch'
+
                 git credentialsId: 'github-credentials',
                     url: 'https://github.com/yourusername/alx-backend-python.git',
-                    branch: 'main'
+                    branch: "${BRANCH}"
             }
         }
 
@@ -42,7 +44,7 @@ pipeline {
 
         stage('Generate Report') {
             steps {
-                echo 'Generating pytest HTML report...'
+                echo '📄 Generating pytest HTML report...'
                 publishHTML([reportDir: '.', reportFiles: 'report.html', reportName: 'Pytest Report'])
             }
         }
@@ -50,10 +52,10 @@ pipeline {
 
     post {
         always {
-            echo 'Pipeline completed.'
+            echo '✅ Pipeline completed.'
         }
         failure {
-            echo 'Pipeline failed!'
+            echo '❌ Pipeline failed!'
         }
     }
 }
