@@ -1,4 +1,4 @@
-name: Django CI
+name: Django CI with Code Quality
 
 on:
   push:
@@ -49,6 +49,15 @@ jobs:
           source venv/bin/activate
           pip install --upgrade pip
           pip install -r messaging_app/requirements.txt
+          pip install flake8 pytest pytest-django pytest-cov
+
+      - name: Run Flake8 Linting
+        run: |
+          source venv/bin/activate
+          echo "Running flake8 for code quality checks..."
+          # Exit with error if linting fails
+          flake8 messaging_app --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 messaging_app --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
 
       - name: Wait for MySQL
         run: |
@@ -62,8 +71,14 @@ jobs:
             sleep 5
           done
 
-      - name: Run Django Tests
+      - name: Run Django Tests with Coverage
         run: |
           source venv/bin/activate
           python manage.py migrate
-          python manage.py test
+          pytest --cov=messaging_app --cov-report=xml --cov-report=html
+
+      - name: Upload Coverage Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/
