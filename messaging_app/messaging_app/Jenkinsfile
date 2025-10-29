@@ -1,1 +1,53 @@
+pipeline {
+    agent any
+
+    environment {
+        VENV = "${WORKSPACE}/venv"
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git credentialsId: 'github-credentials',
+                    url: 'https://github.com/yourusername/alx-backend-python.git',
+                    branch: 'main'
+            }
+        }
+
+        stage('Setup Python Environment') {
+            steps {
+                sh '''
+                python3 -m venv venv
+                . venv/bin/activate
+                pip install --upgrade pip
+                pip install -r messaging_app/requirements.txt pytest pytest-html
+                '''
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh '''
+                . venv/bin/activate
+                pytest messaging_app/tests --junitxml=report.xml --html=report.html
+                '''
+            }
+        }
+
+        stage('Publish Test Report') {
+            steps {
+                publishHTML([reportDir: '.', reportFiles: 'report.html', reportName: 'Pytest Report'])
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline completed.'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
 
