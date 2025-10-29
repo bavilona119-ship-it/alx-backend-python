@@ -1,84 +1,36 @@
-name: Django CI with Code Quality
+name: Build and Push Docker Image
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  test:
+  build-and-push:
     runs-on: ubuntu-latest
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: test_db
-          MYSQL_USER: test_user
-          MYSQL_PASSWORD: test_password
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost -u root -proot"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
-    env:
-      DJANGO_SETTINGS_MODULE: messaging_app.settings
-      DATABASE_NAME: test_db
-      DATABASE_USER: test_user
-      DATABASE_PASSWORD: test_password
-      DATABASE_HOST: 127.0.0.1
-      DATABASE_PORT: 3306
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
         with:
-          python-version: '3.10'
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Install Dependencies
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          pip install --upgrade pip
-          pip install -r messaging_app/requirements.txt
-          pip install flake8 pytest pytest-django pytest-cov
-
-      - name: Run Flake8 Linting
-        run: |
-          source venv/bin/activate
-          echo "Running flake8 for code quality checks..."
-          # Exit with error if linting fails
-          flake8 messaging_app --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 messaging_app --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
-
-      - name: Wait for MySQL
-        run: |
-          echo "Waiting for MySQL to be ready..."
-          for i in {1..10}; do
-            if mysqladmin ping -h 127.0.0.1 -u root -proot --silent; then
-              echo "MySQL is up!"
-              break
-            fi
-            echo "MySQL not ready yet..."
-            sleep 5
-          done
-
-      - name: Run Django Tests with Coverage
-        run: |
-          source venv/bin/activate
-          python manage.py migrate
-          pytest --cov=messaging_app --cov-report=xml --cov-report=html
-
-      - name: Upload Coverage Report Artifact
-        uses: actions/upload-artifact@v4
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
         with:
-          name: coverage-report
-          path: htmlcov/
+          context: .
+          file: messaging_app/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/messaging_app:latest
+            ${{ secrets.DOCKER_USERNAME }}/messaging_app:${{ github.run_number }}
+
+      - name: Logout from Docker Hub
+        run: docker logout
