@@ -1,25 +1,24 @@
-class RolepermissionMiddleware:
-    """
-    Middleware qui vérifie le rôle de l’utilisateur avant d’autoriser certaines actions.
-    - Autorise uniquement les users avec role 'admin' ou 'moderator'
-    """
+import logging
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+class RequestLoggingMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
+        # Configure file logger
+        logging.basicConfig(
+            filename='requests.log',
+            level=logging.INFO,
+            format='%(message)s'
+        )
+
     def __call__(self, request):
-        # Exemple : on protège toutes les actions sous /chats/admin/
-        if request.path.startswith("/chats/admin") or request.path.startswith("/chats/moderate"):
-            user = request.user
-            if not user.is_authenticated:
-                return HttpResponseForbidden(
-                    "<h1>403 Forbidden</h1><p>You must be logged in to access this resource.</p>"
-                )
-            # Vérifier le champ role
-            user_role = getattr(user, "role", "user")  # fallback = user
-            if user_role not in ["admin", "moderator"]:
-                return HttpResponseForbidden(
-                    "<h1>403 Forbidden</h1><p>Access denied. Only admins and moderators are allowed.</p>"
-                )
+        user = request.user if request.user.is_authenticated else "Anonymous"
+        log_message = f"{datetime.now()} - User: {user} - Path: {request.path}"
+
+        logger.info(log_message)
 
         response = self.get_response(request)
         return response
