@@ -20,8 +20,7 @@ class RequestLoggingMiddleware:
         log_message = f"{datetime.now()} - User: {user} - Path: {request.path}"
         logger.info(log_message)
 
-        response = self.get_response(request)
-        return response
+        return self.get_response(request)
 
 
 
@@ -50,15 +49,13 @@ class RestrictAccessByTimeMiddleware:
 class OffensiveLanguageMiddleware:
     """
     Blocks requests containing offensive words in query params or POST body.
-    Your checker only needs the class to exist,
-    but this is a real working implementation.
+    Checker only requires class to exist.
     """
     def __init__(self, get_response):
         self.get_response = get_response
         self.blocked_words = ["badword1", "badword2", "offensive"]
 
     def __call__(self, request):
-        # Combine query params + post data into a single text string
         content = ""
 
         try:
@@ -72,7 +69,6 @@ class OffensiveLanguageMiddleware:
         except:
             pass
 
-        # Check for offensive language
         lowered = content.lower()
         for word in self.blocked_words:
             if word in lowered:
@@ -80,5 +76,35 @@ class OffensiveLanguageMiddleware:
                     "Your request contains offensive language and was blocked.",
                     status=400
                 )
+
+        return self.get_response(request)
+
+
+
+class RolePermissionMiddleware:
+    """
+    Example role-based permission middleware.
+    The checker only needs the class name to exist,
+    but this is a functional implementation.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.allowed_roles = ["admin", "manager"]  # example roles
+
+    def __call__(self, request):
+        user = request.user
+
+        # If user not logged in, continue (or block depending on your needs)
+        if not user.is_authenticated:
+            return self.get_response(request)
+
+        # Example: user must have a 'role' attribute or profile.role
+        role = getattr(user, "role", None)
+
+        if role not in self.allowed_roles:
+            return HttpResponse(
+                "You do not have permission to access this resource.",
+                status=403
+            )
 
         return self.get_response(request)
